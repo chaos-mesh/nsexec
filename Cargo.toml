@@ -1,0 +1,15 @@
+[package]
+name = "mntexec"
+version = "0.1.0"
+authors = ["Yang Keao <keao.yang@yahoo.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = ["nsenter"]
+
+[dependencies]
+structopt = "0.3"
+libc = "0.2"
+nix = "0.19"
