@@ -6,6 +6,7 @@ use nix::sys::stat::Mode;
 
 use std::process::Command;
 use std::path::PathBuf;
+use std::os::unix::process::CommandExt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -30,11 +31,8 @@ struct Opt {
     #[structopt(short, long)]
     pid: bool,
 
-    #[structopt(short, long)]
-    user: bool,
-
-    #[structopt(short, long)]
-    uts: bool,
+    // TODO: support user
+    // TODO: support uts
 
     #[structopt(short, long, default_value="/usr/local/lib/libnsenter.so")]
     library_path: String,
@@ -66,16 +64,6 @@ fn main() {
         setns(fd, CloneFlags::CLONE_NEWPID).unwrap();
     }
 
-    if opts.user {
-        let fd = open(&PathBuf::from(format!("/proc/{}/ns/user", opts.target)), OFlag::O_RDONLY, Mode::empty()).unwrap();
-        setns(fd, CloneFlags::CLONE_NEWUSER).unwrap();
-    }
-
-    if opts.uts {
-        let fd = open(&PathBuf::from(format!("/proc/{}/ns/uts", opts.target)), OFlag::O_RDONLY, Mode::empty()).unwrap();
-        setns(fd, CloneFlags::CLONE_NEWUTS).unwrap();
-    }
-
     let mut command = if opts.mnt {
         let mut command = Command::new("/lib64/ld-linux-x86-64.so.2");
         
@@ -95,7 +83,9 @@ fn main() {
         command
     };
 
-    
+    // TODO: set uid and gid through arguments
+    command.uid(0);
+    command.gid(0);
     let mut child = command.spawn().unwrap();
     child.wait().unwrap();
 }
