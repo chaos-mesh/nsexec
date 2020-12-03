@@ -1,5 +1,5 @@
 [package]
-name = "mntexec"
+name = "nsexec"
 version = "0.1.0"
 authors = ["Yang Keao <keao.yang@yahoo.com>"]
 edition = "2018"
