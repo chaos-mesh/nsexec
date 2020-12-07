@@ -26,6 +26,9 @@ struct Opt {
     mnt: bool,
 
     #[structopt(short, long)]
+    local: bool,
+
+    #[structopt(short, long)]
     net: bool,
 
     #[structopt(short, long)]
@@ -64,9 +67,9 @@ fn main() {
         setns(fd, CloneFlags::CLONE_NEWPID).unwrap();
     }
 
-    let mut command = if opts.mnt {
+    let mut command = if opts.mnt && opts.local {
         let mut command = Command::new("/lib64/ld-linux-x86-64.so.2");
-        
+    
         let cmd = opts.cmd.iter().map(|s| s.as_str());
         let args: Vec<&str> = ["--preload", &opts.library_path].iter().map(|s| *s).chain(cmd).collect();
         command.args(args);
@@ -75,6 +78,11 @@ fn main() {
 
         command
     } else {
+        if opts.mnt {
+            let fd = open(&PathBuf::from(format!("/proc/{}/ns/mnt", opts.target)), OFlag::O_RDONLY, Mode::empty()).unwrap();
+            setns(fd, CloneFlags::CLONE_NEWNS).unwrap();
+        }
+
         let mut command = Command::new(&opts.cmd[0]);
         if opts.cmd.len() > 1 {
             command.args(&opts.cmd[1..]);
