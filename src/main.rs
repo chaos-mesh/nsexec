@@ -65,26 +65,20 @@ fn main() {
     }
 
     let mut command = if let Some(mnt) = opts.mnt {
-        if opts.local {
-            let mut command = Command::new("/lib64/ld-linux-x86-64.so.2");
-    
-            let cmd = opts.cmd.iter().map(|s| s.as_str());
-            let args: Vec<&str> = ["--preload", &opts.library_path].iter().map(|s| *s).chain(cmd).collect();
-            command.args(args);
-            command.env("__MNTEXEC_PATH", format!("{}", mnt.display()));
+        let mut command = Command::new(&opts.cmd[0]);
+        if opts.cmd.len() > 1 {
+            command.args(&opts.cmd[1..]);
+        }
 
-            command
+        if opts.local {
+            command.env("LD_PRELOAD", &opts.library_path);
+            command.env("__MNTEXEC_PATH", format!("{}", mnt.display()));
         } else {
             let fd = open(&mnt, OFlag::O_RDONLY, Mode::empty()).unwrap();
             setns(fd, CloneFlags::CLONE_NEWNS).unwrap();
-
-            let mut command = Command::new(&opts.cmd[0]);
-            if opts.cmd.len() > 1 {
-                command.args(&opts.cmd[1..]);
-            }
-
-            command
         }
+
+        command
     } else {
         let mut command = Command::new(&opts.cmd[0]);
         if opts.cmd.len() > 1 {

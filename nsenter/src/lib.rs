@@ -11,4 +11,6 @@ unsafe fn nsenter() {
         let fd = open(&PathBuf::from(ns_path), OFlag::O_RDONLY, Mode::empty()).unwrap();
         setns(fd, CloneFlags::CLONE_NEWNS).unwrap();
     }
+
+    std::env::remove_var("LD_PRELOAD")
 }
