@@ -16,7 +16,7 @@ jobs:
         run: |
           DOCKER_BUILDKIT=1 docker build --build-arg HTTP_PROXY=${HTTP_PROXY} --build-arg HTTPS_PROXY=${HTTPS_PROXY} . -t chaos-mesh/nsexec
           docker run -v ${PWD}:/opt/mount:z --rm --entrypoint cp chaos-mesh/nsexec /nsexec /opt/mount/nsexec
-          docker run -v ${PWD}:/opt/mount:z --rm --entrypoint cp chaos-mesh/libnsenter.so /nsexec /opt/mount/libnsenter.so
+          docker run -v ${PWD}:/opt/mount:z --rm --entrypoint cp chaos-mesh/nsexec /libnsenter.so /opt/mount/libnsenter.so
           tar -czvf ./nsexec.tar.gz ./libnsenter.so ./nsexec
       - name: Create Release
         id: create_release
