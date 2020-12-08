@@ -14,30 +14,27 @@ use std::os::unix::process::CommandExt;
 )]
 struct Opt {
     #[structopt(short, long)]
-    target: i32,
+    cgroup: Option<PathBuf>,
 
     #[structopt(short, long)]
-    cgroup: bool,
+    ipc: Option<PathBuf>,
 
     #[structopt(short, long)]
-    ipc: bool,
+    mnt: Option<PathBuf>,
 
     #[structopt(short, long)]
-    mnt: bool,
+    net: Option<PathBuf>,
+
+    #[structopt(short, long)]
+    pid: Option<PathBuf>,
 
     #[structopt(short, long)]
     local: bool,
 
-    #[structopt(short, long)]
-    net: bool,
-
-    #[structopt(short, long)]
-    pid: bool,
-
     // TODO: support user
     // TODO: support uts
 
-    #[structopt(short, long, default_value="/usr/local/lib/libnsenter.so")]
+    #[structopt(long, default_value="/usr/local/lib/libnsenter.so")]
     library_path: String,
 
     #[structopt(required = true)]
@@ -47,42 +44,48 @@ struct Opt {
 fn main() {
     let opts = Opt::from_args();
 
-    if opts.cgroup {
-        let fd = open(&PathBuf::from(format!("/proc/{}/ns/cgroup", opts.target)), OFlag::O_RDONLY, Mode::empty()).unwrap();
+    if let Some(cgroup) = opts.cgroup {
+        let fd = open(&cgroup, OFlag::O_RDONLY, Mode::empty()).unwrap();
         setns(fd, CloneFlags::CLONE_NEWCGROUP).unwrap();
     }
 
-    if opts.ipc {
-        let fd = open(&PathBuf::from(format!("/proc/{}/ns/ipc", opts.target)), OFlag::O_RDONLY, Mode::empty()).unwrap();
+    if let Some(ipc) = opts.ipc {
+        let fd = open(&ipc, OFlag::O_RDONLY, Mode::empty()).unwrap();
         setns(fd, CloneFlags::CLONE_NEWIPC).unwrap();
     }
 
-    if opts.net {
-        let fd = open(&PathBuf::from(format!("/proc/{}/ns/net", opts.target)), OFlag::O_RDONLY, Mode::empty()).unwrap();
+    if let Some(net) = opts.net {
+        let fd = open(&net, OFlag::O_RDONLY, Mode::empty()).unwrap();
         setns(fd, CloneFlags::CLONE_NEWNET).unwrap();
     }
 
-    if opts.pid {
-        let fd = open(&PathBuf::from(format!("/proc/{}/ns/pid", opts.target)), OFlag::O_RDONLY, Mode::empty()).unwrap();
+    if let Some(pid) = opts.pid {
+        let fd = open(&pid, OFlag::O_RDONLY, Mode::empty()).unwrap();
         setns(fd, CloneFlags::CLONE_NEWPID).unwrap();
     }
 
-    let mut command = if opts.mnt && opts.local {
-        let mut command = Command::new("/lib64/ld-linux-x86-64.so.2");
+    let mut command = if let Some(mnt) = opts.mnt {
+        if opts.local {
+            let mut command = Command::new("/lib64/ld-linux-x86-64.so.2");
     
-        let cmd = opts.cmd.iter().map(|s| s.as_str());
-        let args: Vec<&str> = ["--preload", &opts.library_path].iter().map(|s| *s).chain(cmd).collect();
-        command.args(args);
+            let cmd = opts.cmd.iter().map(|s| s.as_str());
+            let args: Vec<&str> = ["--preload", &opts.library_path].iter().map(|s| *s).chain(cmd).collect();
+            command.args(args);
+            command.env("__MNTEXEC_PATH", format!("{}", mnt.display()));
 
-        command.env("__MNTEXEC_PID", format!("{}", opts.target));
-
-        command
-    } else {
-        if opts.mnt {
-            let fd = open(&PathBuf::from(format!("/proc/{}/ns/mnt", opts.target)), OFlag::O_RDONLY, Mode::empty()).unwrap();
+            command
+        } else {
+            let fd = open(&mnt, OFlag::O_RDONLY, Mode::empty()).unwrap();
             setns(fd, CloneFlags::CLONE_NEWNS).unwrap();
-        }
 
+            let mut command = Command::new(&opts.cmd[0]);
+            if opts.cmd.len() > 1 {
+                command.args(&opts.cmd[1..]);
+            }
+
+            command
+        }
+    } else {
         let mut command = Command::new(&opts.cmd[0]);
         if opts.cmd.len() > 1 {
             command.args(&opts.cmd[1..]);
