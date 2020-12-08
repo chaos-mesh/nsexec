@@ -87,10 +87,7 @@ fn main() {
 
         command
     };
-
-    // TODO: set uid and gid through arguments
-    command.uid(0);
-    command.gid(0);
+    
     let mut child = command.spawn().unwrap();
     child.wait().unwrap();
 }
