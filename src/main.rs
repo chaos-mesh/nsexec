@@ -3,10 +3,12 @@ use structopt::StructOpt;
 use nix::sched::{CloneFlags, setns};
 use nix::fcntl::{open, OFlag};
 use nix::sys::stat::Mode;
+use nix::sys::signal::{signal, SigHandler, Signal, kill};
+use nix::unistd::Pid;
 
 use std::process::Command;
 use std::path::PathBuf;
-use std::os::unix::process::CommandExt;
+use std::cell::RefCell;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -41,7 +43,22 @@ struct Opt {
     pub cmd: Vec<String>
 }
 
+thread_local! {
+    static CHILD_PID: RefCell<Option<u32>> = RefCell::new(None)
+}
+
+extern "C" fn signal_handler(_: libc::c_int) {
+    CHILD_PID.with(|pid| {
+        if let Some(pid) = *pid.borrow_mut() {
+            kill(Pid::from_raw(pid as i32), Signal::SIGTERM).unwrap();
+        }
+    });
+}
+
 fn main() {
+    unsafe { signal(Signal::SIGINT, SigHandler::Handler(signal_handler)).unwrap() };
+    unsafe { signal(Signal::SIGTERM, SigHandler::Handler(signal_handler)).unwrap() };
+
     let opts = Opt::from_args();
 
     if let Some(cgroup) = opts.cgroup {
@@ -89,6 +106,10 @@ fn main() {
     };
 
     let mut child = command.spawn().unwrap();
+    let pid = child.id();
+    CHILD_PID.with(move |p| {
+        *p.borrow_mut() = Some(pid);
+    });
     let status = child.wait().unwrap();
 
     if let Some(code) = status.code() {
