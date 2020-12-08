@@ -87,7 +87,11 @@ fn main() {
 
         command
     };
-    
+
     let mut child = command.spawn().unwrap();
-    child.wait().unwrap();
+    let status = child.wait().unwrap();
+
+    if let Some(code) = status.code() {
+        std::process::exit(code)
+    }
 }
