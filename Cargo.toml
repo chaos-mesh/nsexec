@@ -1,6 +1,6 @@
 [package]
 name = "nsexec"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Yang Keao <keao.yang@yahoo.com>"]
 edition = "2018"
 
@@ -12,4 +12,4 @@ members = ["nsenter"]
 [dependencies]
 structopt = "0.3"
 libc = "0.2"
-nix = "0.19"
+nix = "0.22"

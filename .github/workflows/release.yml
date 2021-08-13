@@ -23,7 +23,8 @@ jobs:
           draft: false
           prerelease: false
   build:
-    name: Create Release
+    name: Upload Release
+    needs: create_release
     runs-on: ubuntu-latest
     strategy:
       matrix:
