@@ -1,4 +1,5 @@
 use structopt::StructOpt;
+use command_fds::{CommandFdExt, FdMapping};
 
 use nix::sched::{CloneFlags, setns};
 use nix::fcntl::{open, OFlag};
@@ -32,6 +33,9 @@ struct Opt {
 
     #[structopt(short, long)]
     local: bool,
+
+    #[structopt(short, long)]
+    keep_fd: Vec<libc::c_int>,
 
     // TODO: support user
     // TODO: support uts
@@ -104,6 +108,15 @@ fn main() {
 
         command
     };
+
+    for fd in opts.keep_fd.iter() {
+        command.fd_mappings(vec![
+            FdMapping {
+                parent_fd: *fd,
+                child_fd: *fd,
+            }
+        ]).unwrap();
+    }
 
     let mut child = command.spawn().unwrap();
     let pid = child.id();

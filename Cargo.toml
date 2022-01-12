@@ -13,3 +13,4 @@ members = ["nsenter"]
 structopt = "0.3"
 libc = "0.2"
 nix = "0.22"
+command-fds = "0.2.1"
