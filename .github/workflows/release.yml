@@ -25,23 +25,30 @@ jobs:
   build:
     name: Upload Release
     needs: create_release
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-        - target: aarch64-unknown-linux-gnu
-          cc: gcc-aarch64-linux-gnu
-        - target: x86_64-unknown-linux-gnu
-          cc: gcc
+        arch: [x86_64, aarch64]
+    runs-on: ${{ fromJson('{"x86_64":"ubuntu-latest", "aarch64":["self-hosted", "Linux", "ARM64"]}')[matrix.arch] }}
+    container: docker.io/debian:buster-slim
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
+      - name: Install curl
+        run: |
+          apt-get update -y
+          apt-get install build-essential gcc curl git pkg-config -y
+      
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+
       - name: Build
         run: |
-          DOCKER_BUILDKIT=1 docker build --build-arg CC=${{ matrix.cc }} --build-arg TARGET=${{ matrix.target }} --build-arg HTTP_PROXY=${HTTP_PROXY} --build-arg HTTPS_PROXY=${HTTPS_PROXY} . -t chaos-mesh/nsexec
-          docker run -v ${PWD}:/opt/mount:z --rm --entrypoint cp chaos-mesh/nsexec /nsexec /opt/mount/nsexec
-          docker run -v ${PWD}:/opt/mount:z --rm --entrypoint cp chaos-mesh/nsexec /libnsenter.so /opt/mount/libnsenter.so
-          tar -czvf ./nsexec-${{ matrix.target }}.tar.gz ./libnsenter.so ./nsexec
+          cargo build --release --all
+          cp target/$TARGET/release/nsexec ./nsexec
+          cp target/$TARGET/release/libnsenter.so ./libnsenter.so
+          tar -czvf ./nsexec-${{ matrix.arch }}-unknown-linux-gnu.tar.gz ./libnsenter.so ./nsexec
+
       - name: Upload Release Asset
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1
@@ -49,7 +56,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }} 
-          asset_path: ./nsexec-${{ matrix.target }}.tar.gz
-          asset_name: nsexec-${{ matrix.target }}.tar.gz
+          asset_path: ./nsexec-${{ matrix.arch }}-unknown-linux-gnu.tar.gz
+          asset_name: nsexec-${{ matrix.arch }}-unknown-linux-gnu.tar.gz
           asset_content_type: application/zip
-
